@@ -40,6 +40,12 @@
       "items": {
         "$ref": "#/$defs/governanceEvent"
       }
+    },
+    "users": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/user"
+      }
     }
   },
   "$defs": {
@@ -309,6 +315,34 @@
         },
         "createdAt": {
           "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "user": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "username",
+        "email",
+        "createdAt",
+        "lastLoginAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "username": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "email": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "createdAt": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "lastLoginAt": {
+          "$ref": "#/$defs/nullableString"
         }
       }
     }

@@ -121,6 +121,26 @@ function mapGovernanceEventRow(row) {
   };
 }
 
+function mapUserRow(row) {
+  return {
+    id: row.id,
+    username: row.username,
+    email: row.email,
+    createdAt: row.created_at,
+    lastLoginAt: row.last_login_at,
+  };
+}
+
+function normalizeUserInput(user) {
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email ?? null,
+    createdAt: user.createdAt || new Date().toISOString(),
+    lastLoginAt: user.lastLoginAt ?? null,
+  };
+}
+
 function classifyOutcome(outcome) {
   const normalized = String(outcome || '').toLowerCase();
   if (SUCCESS_OUTCOMES.has(normalized)) {
@@ -354,6 +374,47 @@ function createQueryApi(db) {
     SELECT *
     FROM skill_versions
     WHERE skill_id = ? AND version = ?
+  `);
+
+  const getUserByIdStatement = db.prepare(`
+    SELECT *
+    FROM users
+    WHERE id = ?
+  `);
+  const getUserByUsernameStatement = db.prepare(`
+    SELECT *
+    FROM users
+    WHERE username = ?
+  `);
+  const listUsersStatement = db.prepare(`
+    SELECT *
+    FROM users
+    ORDER BY created_at DESC
+    LIMIT ?
+  `);
+  const upsertUserStatement = db.prepare(`
+    INSERT INTO users (
+      id,
+      username,
+      email,
+      created_at,
+      last_login_at
+    ) VALUES (
+      @id,
+      @username,
+      @email,
+      @created_at,
+      @last_login_at
+    )
+    ON CONFLICT(id) DO UPDATE SET
+      username = excluded.username,
+      email = excluded.email,
+      last_login_at = excluded.last_login_at
+  `);
+  const updateLastLoginStatement = db.prepare(`
+    UPDATE users
+    SET last_login_at = ?
+    WHERE id = ?
   `);
 
   const upsertSessionStatement = db.prepare(`
@@ -685,6 +746,38 @@ function createQueryApi(db) {
       });
       const row = getSkillVersionStatement.get(normalized.skillId, normalized.version);
       return row ? mapSkillVersionRow(row) : null;
+    },
+    getUserById(id) {
+      const row = getUserByIdStatement.get(id);
+      return row ? mapUserRow(row) : null;
+    },
+    getUserByUsername(username) {
+      const row = getUserByUsernameStatement.get(username);
+      return row ? mapUserRow(row) : null;
+    },
+    listUsers(options = {}) {
+      const limit = normalizeLimit(options.limit, 10);
+      return listUsersStatement.all(limit).map(mapUserRow);
+    },
+    upsertUser(user) {
+      const normalized = normalizeUserInput(user);
+      assertValidEntity('user', normalized);
+      upsertUserStatement.run({
+        id: normalized.id,
+        username: normalized.username,
+        email: normalized.email,
+        created_at: normalized.createdAt,
+        last_login_at: normalized.lastLoginAt,
+      });
+      return getUserByIdStatement.get(normalized.id)
+        ? mapUserRow(getUserByIdStatement.get(normalized.id))
+        : normalized;
+    },
+    touchUserLogin(id) {
+      const now = new Date().toISOString();
+      updateLastLoginStatement.run(now, id);
+      const row = getUserByIdStatement.get(id);
+      return row ? mapUserRow(row) : null;
     },
   };
 }

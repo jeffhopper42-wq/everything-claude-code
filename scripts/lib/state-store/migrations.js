@@ -107,11 +107,29 @@ CREATE INDEX IF NOT EXISTS idx_governance_events_session_id_created_at
   ON governance_events (session_id, created_at DESC);
 `;
 
+const USERS_MIGRATION_SQL = `
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
+  email TEXT,
+  created_at TEXT NOT NULL,
+  last_login_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_username
+  ON users (username);
+`;
+
 const MIGRATIONS = [
   {
     version: 1,
     name: '001_initial_state_store',
     sql: INITIAL_SCHEMA_SQL,
+  },
+  {
+    version: 2,
+    name: '002_add_users',
+    sql: USERS_MIGRATION_SQL,
   },
 ];
 
